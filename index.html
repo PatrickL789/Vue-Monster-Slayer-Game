@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Monster Slayer</title>
+    <script src="https://npmcdn.com/vue/dist/vue.js"></script>
+    <link rel="stylesheet" href="css/foundation.min.css">
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app">
+    <section class="row">
+        <div class="small-6 columns">
+            <h1 class="text-center">YOU</h1>
+            <div class="healthbar" :style="{width: pHealth + '%'}">
+                <div class="healthbar text-center" style="background-color: green; margin: 0; color: white;">
+                    <h3>{{ pHealth }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="small-6 columns">
+            <h1 class="text-center">MONSTER</h1>
+            <div class="healthbar" :style="{width: mHealth + '%'}">
+                <div class="healthbar text-center" style="background-color: green; margin: 0; color: white;">
+                    <h3>{{mHealth}}</h3>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="row controls" v-if="gameStart==false" v-on:click="start">
+        <div class="small-12 columns">
+            <button id="start-game">START NEW GAME</button>
+        </div>
+    </section>
+    <section class="row controls" v-if="gameStart">
+        <div class="small-12 columns">
+            <button id="attack" @click="attackMonster">ATTACK</button>
+            <button id="special-attack" :disabled="!canUseSpecial" @click="useSpecialAttack">SPECIAL ATTACK</button>
+            <button id="heal" :disabled="!canHeal" @click="healPlayer">HEAL</button>
+            <button id="give-up" v-on:click="giveup">GIVE UP</button>
+        </div>
+    </section>
+    <section class="row log">
+        <div class="small-12 columns">
+            <ul>
+                <li v-for="item in log">
+                    {{ item }}
+                </li>
+            </ul>
+        </div>
+    </section>
+</div>
+
+<script type="text/javascript">
+    new Vue({
+        el: '#app',
+        data: {
+            // the player's health
+            pHealth: 100,
+
+            // The monster's health
+            mHealth: 100,
+
+            // shows if the game is started
+            gameStart: false,
+
+            // The minimum damage that can be inflicted.
+            minDamage: 5,
+
+            // the maximum damage that can be inflicted
+            maxDamage: 20,
+
+            // the amount of ability points you gain by using an attack
+            attackReward: 35,
+
+            // the damage done by special moves
+            specialDmg: 35,
+
+            // The cost of using a special attack (in ability points)
+            specialCost: 100,
+
+            // ability gage
+            abilityGageVal: 0,
+
+            // The maximum value of an ability gage
+            maxAbilityGageVal: 100,
+
+            // the number of points the player restores when healing.
+            healPoints: 30,
+
+            // the amount of ability gage points it costs to perform a heal
+            healCost: 70,
+
+            // the ability points rewarded for using a heal
+
+            healReward: 20,
+
+            // monster ability gage
+            mAbilityGageVal: 0,
+
+            // the health threshold the monster begins to heal itself
+            mHealsAtOrBelow: 40,
+
+            // a flag indicating whether or not the player has moved.
+            playerHasMoved: false,
+
+            log: []
+        },
+        methods: {
+
+            // starts the game
+            start: function() {
+                this.gameStart = true;
+                this.pHealth = 100;
+                this.mHealth = 100;
+
+                // set ability gages
+                this.abilityGageVal = 0;
+                this.mAbilityGageVal = 0;
+
+                this.playerHasMoved = false;
+
+                // reset the log
+                this.log = [];
+
+                // log that the game has started
+                this.log.push('The game has begun');
+                
+            },
+
+            // ends the game and declares the monster the winner.
+            giveup: function() {
+                 // add the move to the log
+                this.log.push('You surrendered to the monster');
+                alert('You Lose!');
+                this.gameStart = false;
+            },
+
+            // the player attacks
+            attackMonster: function() {
+                // calculate the damage the player ewill do to the monster
+                var damage = Math.random() * (this.maxDamage - this.minDamage) + this.minDamage;
+                damage = Math.ceil(damage);
+
+                // ca;culate the monster's new health
+                var mNewHealth = this.mHealth - damage >= 0 ? this.mHealth - damage : 0;
+                this.mHealth = mNewHealth;
+                // add to the special gage
+                var newVal = this.abilityGageVal + this.attackReward;
+                this.abilityGageVal = newVal < this.maxAbilityGageVal ? newVal : this.maxAbilityGageVal;
+
+                // add the move to the log
+                this.log.push('You attacked the monster, doing ' + damage + " damage");
+
+                // indicate the player has moved
+                this.playerHasMoved = true;
+            },
+
+            useSpecialAttack: function() {
+                this.mHealth = this.mHealth - this.specialDmg > 0 ? this.mHealth - this.specialDmg : 0;
+                //reset special gage value
+                var newVal = this.abilityGageVal - this.specialCost;
+                this.abilityGageVal = newVal > 0 ? newVal : 0;
+
+                 // add the move to the log
+                this.log.push('You used your special attack, doing ' + this.specialDmg + " damage");
+
+                // indicate that the player has moved
+                this.playerHasMoved = true;
+            },
+
+            healPlayer: function() {
+                this.pHealth = this.pHealth + this.healPoints < 100 ? this.pHealth + this.healPoints : 100;
+                this.abilityGageVal = this.abilityGageVal - this.healCost > 0 ? this.abilityGageVal - this.healCost : 0;
+
+                // add heal reward
+                var newVal = this.abilityGageVal + this.healReward;
+                this.abilityGageVal = newVal <= this.maxAbilityGageVal ? newVal : this.maxAbilityGageVal;
+
+                 // add the move to the log
+                this.log.push("You healed yourself, restoring " + this.healPoints + " Health Points");
+
+                // indicate that the player has moved
+                this.playerHasMoved = true;
+            },
+
+            // monster moves
+
+            // monster attacks player
+            attackPlayer: function() {
+                // calculate the damage the monster will do to the player
+                var damage = Math.random() * (this.maxDamage - this.minDamage) + this.minDamage;
+                damage = Math.ceil(damage);
+
+                // ca;culate the players new health
+                var pNewHealth = this.pHealth - damage >= 0 ? this.pHealth - damage : 0;
+                this.pHealth = pNewHealth;
+                // add to the special gage
+                var newVal = this.mAbilityGageVal + this.attackReward;
+                this.mAbilityGageVal = newVal < this.maxAbilityGageVal ? newVal : this.maxAbilityGageVal;
+
+                 // add the move to the log
+                this.log.push('The monster attacked you, doing ' + damage + " damage");
+            },
+
+            healMonster: function() {
+                this.mHealth = this.mHealth + this.healPoints < 100 ? this.mHealth + this.healPoints : 100;
+                this.mAbilityGageVal = this.mAbilityGageVal - this.healCost > 0 ? this.mAbilityGageVal - this.healCost : 0;
+
+                // add heal reward
+                var newVal = this.mAbilityGageVal + this.healReward;
+                this.mAbilityGageVal = newVal <= this.maxAbilityGageVal ? newVal : this.maxAbilityGageVal;
+
+                 // add the move to the log
+                this.log.push("The monster healed itself, restoring " + this.healPoints + " health points");
+            },
+
+            monsterSpecial: function() {
+                this.pHealth = this.pHealth - this.specialDmg > 0 ? this.pHealth - this.specialDmg : 0;
+                //reset special gage value
+                var newVal = this.mAbilityGageVal - this.specialCost;
+                this.mAbilityGageVal = newVal > 0 ? newVal : 0;
+
+                 // add the move to the log
+                this.log.push("The monster used its special attack, doing " + this.specialDmg + " damage");
+            },
+
+            monsterMove: function() {
+
+                // if health is or below 1/3, try to heal.
+
+                if ((this.mHealth <= this.mHealsAtOrBelow) && (this.monsterCanHeal))
+                {
+                    this.healMonster();
+                    return;
+                }
+                
+                if (this.canUseMonsterSpecial)
+                {
+                    this.monsterSpecial();
+                }
+                else
+                {
+                    this.attackPlayer();
+                }
+
+                return;
+            }
+
+        },
+        computed: {
+            canUseSpecial: function() {
+                return this.abilityGageVal >= 100;
+            },
+            canHeal: function() {
+                return this.abilityGageVal >= this.healCost;
+            },
+
+            canUseMonsterSpecial: function() {
+                return this.mAbilityGageVal >= 100;
+            },
+            monsterCanHeal: function() {
+                return this.mAbilityGageVal >= this.healCost;
+            },
+        },
+        watch: {
+            playerHasMoved: function(value) {
+                if ((value) && (this.mHealth > 0))
+                {
+                    this.monsterMove();
+                    this.playerHasMoved = false;
+                }
+            },
+
+            pHealth: function(value)
+            {
+                if (value == 0)
+                {
+                    // add the move to the log
+                    this.log.push("You were slayed by the monster");
+                    this.log.push("You Lose!");
+                    this.gameStart = false;
+                    alert('You Lose!');
+                }
+            },
+
+            mHealth: function(value) {
+                if (value == 0)
+                {
+                    // add the move to the log
+                    this.log.push('You slayed the monster');
+                    this.log.push("You Win!");
+
+                    // alert the user he won
+                    this.gameStart = false;
+                    alert('You Win!');
+                    
+                }
+            }
+        }
+    });
+</script>
+</body>
+</html>
